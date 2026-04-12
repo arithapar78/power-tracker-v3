@@ -11,6 +11,10 @@ document.getElementById('open-optimizer-btn').addEventListener('click', () => {
   viewOptimizer.classList.remove('hidden');
 });
 
+document.getElementById('open-history-btn').addEventListener('click', () => {
+  chrome.runtime.openOptionsPage();
+});
+
 document.getElementById('back-btn').addEventListener('click', () => {
   viewOptimizer.classList.add('hidden');
   viewDashboard.classList.remove('hidden');

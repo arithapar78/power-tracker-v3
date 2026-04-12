@@ -1,18 +1,25 @@
 // background/service-worker.js
-// Role: receive metrics from content scripts and store the latest per tab.
+// Role: receive metrics from content scripts, store latest per tab, persist watt history.
 
-// tabMetrics maps tabId -> latest metrics object.
+importScripts('../lib/energy-estimator.js', '../lib/storage.js');
+
+// tabMetrics maps tabId -> latest metrics object (in-memory only).
 const tabMetrics = {};
 
 chrome.runtime.onInstalled.addListener(() => {
   // Nothing to initialise yet.
 });
 
-// Receive PAGE_METRICS from content scripts.
-// sender.tab.id identifies which tab the metrics came from.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
+  // Content script pushes page metrics.
   if (message.type === 'PAGE_METRICS' && sender.tab?.id != null) {
     tabMetrics[sender.tab.id] = message.metrics;
+
+    // Compute watts and persist to history so the options page has data.
+    const watts = estimateWatts(message.metrics);
+    appendWatts(watts); // fire-and-forget; storage.js handles the cap
+
     sendResponse({ ok: true });
   }
 
@@ -21,9 +28,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const metrics = tabMetrics[message.tabId] ?? null;
     sendResponse({ metrics });
   }
+
+  // Options page requests full history.
+  if (message.type === 'GET_HISTORY') {
+    readHistory().then((history) => sendResponse({ history }));
+    return true; // keep message channel open for async response
+  }
+
+  // Options page requests history to be cleared.
+  if (message.type === 'CLEAR_HISTORY') {
+    clearHistory().then(() => sendResponse({ ok: true }));
+    return true;
+  }
 });
 
-// Clean up stored metrics when a tab is closed.
+// Clean up in-memory metrics when a tab is closed.
 chrome.tabs.onRemoved.addListener((tabId) => {
   delete tabMetrics[tabId];
 });

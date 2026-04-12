@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Power Tracker — History</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+
+  <div class="page">
+
+    <header class="page-header">
+      <h1>Energy History</h1>
+      <button id="clear-btn" class="danger-btn">Clear History</button>
+    </header>
+
+    <!-- Summary stats -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Current</div>
+        <div class="stat-value" id="stat-current">—</div>
+        <div class="stat-unit">W</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Average</div>
+        <div class="stat-value" id="stat-avg">—</div>
+        <div class="stat-unit">W</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Peak</div>
+        <div class="stat-value" id="stat-peak">—</div>
+        <div class="stat-unit">W</div>
+      </div>
+    </section>
+
+    <!-- Line chart -->
+    <section class="chart-section">
+      <canvas id="chart" width="640" height="220"></canvas>
+      <div id="empty-msg" class="empty-msg hidden">No data yet. Open some pages.</div>
+    </section>
+
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
