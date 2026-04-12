@@ -1,7 +1,29 @@
 // background/service-worker.js
-// Role: background coordination (minimal)
-// TODO: listen for messages from content script or popup if needed
+// Role: receive metrics from content scripts and store the latest per tab.
+
+// tabMetrics maps tabId -> latest metrics object.
+const tabMetrics = {};
 
 chrome.runtime.onInstalled.addListener(() => {
-  // TODO: initialize extension state on install
+  // Nothing to initialise yet.
+});
+
+// Receive PAGE_METRICS from content scripts.
+// sender.tab.id identifies which tab the metrics came from.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'PAGE_METRICS' && sender.tab?.id != null) {
+    tabMetrics[sender.tab.id] = message.metrics;
+    sendResponse({ ok: true });
+  }
+
+  // Popup requests the latest metrics for a given tab.
+  if (message.type === 'GET_METRICS') {
+    const metrics = tabMetrics[message.tabId] ?? null;
+    sendResponse({ metrics });
+  }
+});
+
+// Clean up stored metrics when a tab is closed.
+chrome.tabs.onRemoved.addListener((tabId) => {
+  delete tabMetrics[tabId];
 });

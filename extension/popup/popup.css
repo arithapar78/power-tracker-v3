@@ -33,7 +33,7 @@ body {
 /* ── Icon button (✏️ / ←) ─────────────────────── */
 .icon-btn {
   background: none;
-  border: none;
+  border: 1.5px solid #1a1a1a;
   cursor: pointer;
   font-size: 16px;
   padding: 2px 4px;
