@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Power Tracker v3",
+  "version": "0.1.0",
+  "description": "Minimal prompt optimizer and usage tracker.",
+
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content-script.js"]
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Power Tracker"
+  }
+}

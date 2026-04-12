@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Power Tracker</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <h1>Power Tracker</h1>
+
+  <!-- TODO: prompt input area -->
+  <textarea id="original-prompt" placeholder="Enter your prompt..." rows="4"></textarea>
+
+  <!-- TODO: optimize button -->
+  <button id="optimize-btn">Optimize</button>
+
+  <!-- TODO: optimized prompt output -->
+  <div id="optimized-prompt" class="output hidden"></div>
+
+  <!-- TODO: status message (success / error) -->
+  <div id="status" class="status hidden"></div>
+
+  <script src="../lib/prompt-generator.js"></script>
+  <script src="../lib/energy-estimator.js"></script>
+  <script src="../lib/api.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

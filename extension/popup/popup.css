@@ -1,0 +1,49 @@
+/* popup/popup.css */
+/* Role: minimal popup styling */
+
+body {
+  font-family: sans-serif;
+  width: 320px;
+  padding: 16px;
+  margin: 0;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-size: 13px;
+  padding: 8px;
+}
+
+button {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.output {
+  margin-top: 12px;
+  padding: 8px;
+  background: #f4f4f4;
+  border: 1px solid #ddd;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.status {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #555;
+}
+
+.hidden {
+  display: none;
+}
