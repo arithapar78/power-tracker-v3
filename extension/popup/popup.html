@@ -6,19 +6,98 @@
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <h1>Power Tracker</h1>
 
-  <!-- TODO: prompt input area -->
-  <textarea id="original-prompt" placeholder="Enter your prompt..." rows="4"></textarea>
+  <!-- ═══════════════════════════════════════════════
+       VIEW 1: Dashboard (default)
+  ════════════════════════════════════════════════ -->
+  <div id="view-dashboard">
 
-  <!-- TODO: optimize button -->
-  <button id="optimize-btn">Optimize</button>
+    <header class="header">
+      <button id="open-optimizer-btn" class="icon-btn" title="Prompt Optimizer">✏️</button>
+      <span class="header-title">Power Tracker</span>
+    </header>
 
-  <!-- TODO: optimized prompt output -->
-  <div id="optimized-prompt" class="output hidden"></div>
+    <!-- Activity indicator -->
+    <section class="card">
+      <div class="card-label">Frontend Activity</div>
+      <div class="activity-indicator">
+        <span class="activity-dot"></span>
+        <span class="activity-text">Active</span>
+        <!-- TODO: replace with real activity detection -->
+      </div>
+    </section>
 
-  <!-- TODO: status message (success / error) -->
-  <div id="status" class="status hidden"></div>
+    <!-- Energy in watts -->
+    <section class="card card-energy">
+      <div class="card-label">Estimated Energy</div>
+      <div class="energy-value">0.00 <span class="energy-unit">W</span></div>
+      <!-- TODO: replace with real energy estimate -->
+    </section>
+
+    <!-- Comparisons -->
+    <section class="card">
+      <div class="card-label">Equivalent per Hour</div>
+      <div class="comparisons">
+
+        <div class="comparison-row">
+          <span class="comparison-icon">💡</span>
+          <div class="comparison-info">
+            <span class="comparison-value">0.0</span>
+            <span class="comparison-label">light bulbs (60 W)</span>
+          </div>
+          <!-- TODO: replace with real calculation -->
+        </div>
+
+        <div class="comparison-row">
+          <span class="comparison-icon">💧</span>
+          <div class="comparison-info">
+            <span class="comparison-value">0.0</span>
+            <span class="comparison-label">gallons of water</span>
+          </div>
+          <!-- TODO: replace with real calculation -->
+        </div>
+
+        <div class="comparison-row">
+          <span class="comparison-icon">🌿</span>
+          <div class="comparison-info">
+            <span class="comparison-value">0.0</span>
+            <span class="comparison-label">g CO₂ released</span>
+          </div>
+          <!-- TODO: replace with real calculation -->
+        </div>
+
+      </div>
+    </section>
+
+  </div><!-- /view-dashboard -->
+
+
+  <!-- ═══════════════════════════════════════════════
+       VIEW 2: Prompt Optimizer
+  ════════════════════════════════════════════════ -->
+  <div id="view-optimizer" class="hidden">
+
+    <header class="header">
+      <button id="back-btn" class="icon-btn" title="Back to Dashboard">←</button>
+      <span class="header-title">Prompt Optimizer</span>
+    </header>
+
+    <section class="card">
+      <div class="card-label">Your Prompt</div>
+      <textarea id="original-prompt" placeholder="Enter your prompt..." rows="4"></textarea>
+      <button id="optimize-btn" class="primary-btn">Optimize</button>
+    </section>
+
+    <section class="card hidden" id="result-card">
+      <div class="card-label">Optimized Prompt</div>
+      <div id="optimized-prompt" class="output-text"></div>
+      <!-- TODO: wire to prompt-generator.js -->
+    </section>
+
+    <div id="status" class="status hidden"></div>
+
+  </div><!-- /view-optimizer -->
+
 
   <script src="../lib/prompt-generator.js"></script>
   <script src="../lib/energy-estimator.js"></script>
