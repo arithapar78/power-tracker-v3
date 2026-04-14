@@ -77,19 +77,26 @@ setInterval(refreshDashboard, 5000);
 
 // ── Prompt optimizer ───────────────────────────────────────────────────────
 
-document.getElementById('optimize-btn').addEventListener('click', async () => {
-  const original = document.getElementById('original-prompt').value.trim();
+// Live token counter while the user types
+const originalPromptEl = document.getElementById('original-prompt');
+const originalTokensEl = document.getElementById('original-tokens');
+
+originalPromptEl.addEventListener('input', () => {
+  const tokens = countTokens(originalPromptEl.value);
+  originalTokensEl.textContent = tokens;
+});
+
+document.getElementById('optimize-btn').addEventListener('click', () => {
+  const original = originalPromptEl.value.trim();
   if (!original) return;
 
-  // TODO: call real optimizePrompt() from prompt-generator.js
   const optimized = optimizePrompt(original);
+  const stats = getTokenStats(original, optimized);
 
-  const resultCard = document.getElementById('result-card');
   document.getElementById('optimized-prompt').textContent = optimized;
-  resultCard.classList.remove('hidden');
+  document.getElementById('stat-original').textContent = stats.original;
+  document.getElementById('stat-optimized').textContent = stats.optimized;
+  document.getElementById('stat-saved').textContent = stats.saved;
 
-  // TODO: call saveEvent() from api.js
-  const statusEl = document.getElementById('status');
-  statusEl.textContent = 'Placeholder: backend not connected yet.';
-  statusEl.classList.remove('hidden');
+  document.getElementById('result-card').classList.remove('hidden');
 });

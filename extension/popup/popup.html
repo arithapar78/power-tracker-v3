@@ -82,13 +82,30 @@
     <section class="card">
       <div class="card-label">Your Prompt</div>
       <textarea id="original-prompt" placeholder="Enter your prompt..." rows="4"></textarea>
+      <div class="token-row">
+        <span class="token-label">Tokens:</span>
+        <span id="original-tokens" class="token-count">0</span>
+      </div>
       <button id="optimize-btn" class="primary-btn">Optimize</button>
     </section>
 
     <section class="card hidden" id="result-card">
       <div class="card-label">Optimized Prompt</div>
       <div id="optimized-prompt" class="output-text"></div>
-      <!-- TODO: wire to prompt-generator.js -->
+      <div class="token-stats">
+        <div class="token-stat-row">
+          <span class="token-stat-label">Original</span>
+          <span id="stat-original" class="token-stat-value">—</span>
+        </div>
+        <div class="token-stat-row">
+          <span class="token-stat-label">Optimized</span>
+          <span id="stat-optimized" class="token-stat-value">—</span>
+        </div>
+        <div class="token-stat-row token-stat-row--saved">
+          <span class="token-stat-label">Saved</span>
+          <span id="stat-saved" class="token-stat-value token-saved">—</span>
+        </div>
+      </div>
     </section>
 
     <div id="status" class="status hidden"></div>
@@ -96,6 +113,8 @@
   </div><!-- /view-optimizer -->
 
 
+  <script src="../lib/prompt-rules-db.js"></script>
+  <script src="../lib/token-counter.js"></script>
   <script src="../lib/prompt-generator.js"></script>
   <script src="../lib/energy-estimator.js"></script>
   <script src="../lib/api.js"></script>

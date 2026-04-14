@@ -183,6 +183,57 @@ textarea:focus {
   line-height: 1.5;
 }
 
+/* ── Token counter (live, below textarea) ─────── */
+.token-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
+.token-label {
+  font-size: 11px;
+  color: #888;
+}
+
+.token-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+}
+
+/* ── Token stats (below optimized result) ─────── */
+.token-stats {
+  margin-top: 10px;
+  border-top: 1px solid #ebebeb;
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.token-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.token-stat-label {
+  font-size: 11px;
+  color: #888;
+}
+
+.token-stat-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+}
+
+.token-saved {
+  color: #2e7d32;
+}
+
 /* ── Status message ───────────────────────────── */
 .status {
   font-size: 12px;
