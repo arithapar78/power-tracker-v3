@@ -1,24 +1,96 @@
 // background/service-worker.js
 // Role: receive metrics from content scripts, store latest per tab, persist watt history.
+// Also detects AI sites and folds backend AI energy into the total watt reading.
 
-importScripts('../lib/energy-estimator.js', '../lib/storage.js');
+importScripts(
+  '../lib/energy-estimator.js',
+  '../lib/storage.js',
+  '../lib/ai-energy-database.js',
+);
 
-// tabMetrics maps tabId -> latest metrics object (in-memory only).
+// ── State ──────────────────────────────────────────────────────────────────
+
+// tabMetrics maps tabId -> latest raw metrics from content script (in-memory)
 const tabMetrics = {};
 
-chrome.runtime.onInstalled.addListener(() => {
-  // Nothing to initialise yet.
-});
+// tabAI maps tabId -> { detection result, watts, modelKey } (in-memory)
+const tabAI = {};
+
+// Track when each tab was first seen so we can estimate session duration
+const tabStartTime = {};
+
+const aiManager = new AIEnergyManager();
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Look up the active tab's URL and title, run AI detection, and return AI
+ * watts for that tab. Returns 0 if the site is not a known AI site.
+ *
+ * @param {number} tabId
+ * @returns {Promise<{ aiWatts: number, modelKey: string|null, modelName: string|null }>}
+ */
+async function resolveAIWatts(tabId) {
+  let tab;
+  try {
+    tab = await chrome.tabs.get(tabId);
+  } catch (_) {
+    return { aiWatts: 0, modelKey: null, modelName: null };
+  }
+
+  // Run detection using URL + page title (no DOM access needed)
+  const detection = aiManager.detectAIModel(tab.url, tab.title);
+  if (!detection) {
+    return { aiWatts: 0, modelKey: null, modelName: null };
+  }
+
+  // Duration since the tab was first seen in this session
+  const startTime  = tabStartTime[tabId] || Date.now();
+  const durationMs = Date.now() - startTime;
+
+  // Compute energy and convert to an instantaneous watt figure
+  const { energyWh } = aiManager.computeEnergy(detection.modelKey, durationMs);
+  const aiWatts = aiManager.energyToWatts(energyWh, durationMs);
+
+  aiManager.updateTabUsage(tabId, {
+    modelKey: detection.modelKey,
+    queries:  aiManager.estimateQueryCount(durationMs),
+    energyWh,
+  });
+
+  return {
+    aiWatts,
+    modelKey:  detection.modelKey,
+    modelName: detection.model?.name ?? null,
+    platform:  detection.platform,
+  };
+}
+
+// ── Message handler ────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Content script pushes page metrics.
   if (message.type === 'PAGE_METRICS' && sender.tab?.id != null) {
-    tabMetrics[sender.tab.id] = message.metrics;
+    const tabId = sender.tab.id;
 
-    // Compute watts and persist to history so the options page has data.
-    const watts = estimateWatts(message.metrics);
-    appendWatts(watts); // fire-and-forget; storage.js handles the cap
+    // Record first-seen time for duration estimation
+    if (!tabStartTime[tabId]) tabStartTime[tabId] = Date.now();
+
+    tabMetrics[tabId] = message.metrics;
+
+    // Compute frontend watts, then fold in AI backend watts asynchronously.
+    const frontendWatts = estimateWatts(message.metrics);
+
+    resolveAIWatts(tabId).then(({ aiWatts, modelKey, modelName, platform }) => {
+      const totalWatts = frontendWatts + aiWatts;
+
+      // Cache AI info for GET_METRICS requests
+      tabAI[tabId] = { aiWatts, modelKey, modelName, platform };
+
+      // Persist total (frontend + backend) to history
+      appendWatts(totalWatts);
+    });
 
     sendResponse({ ok: true });
   }
@@ -26,13 +98,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Popup requests the latest metrics for a given tab.
   if (message.type === 'GET_METRICS') {
     const metrics = tabMetrics[message.tabId] ?? null;
-    sendResponse({ metrics });
+    const ai      = tabAI[message.tabId] ?? null;
+    sendResponse({ metrics, ai });
   }
 
   // Options page requests full history.
   if (message.type === 'GET_HISTORY') {
     readHistory().then((history) => sendResponse({ history }));
-    return true; // keep message channel open for async response
+    return true; // keep channel open for async response
   }
 
   // Options page requests history to be cleared.
@@ -42,7 +115,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Clean up in-memory metrics when a tab is closed.
+// ── Tab lifecycle ──────────────────────────────────────────────────────────
+
 chrome.tabs.onRemoved.addListener((tabId) => {
   delete tabMetrics[tabId];
+  delete tabAI[tabId];
+  delete tabStartTime[tabId];
+  aiManager.removeTab(tabId);
 });

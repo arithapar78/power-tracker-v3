@@ -58,7 +58,7 @@ const FILLER_WORDS = [
   // Padding phrases
   "in order to", "for the purpose of", "with the aim of",
   "with the goal of", "with the intention of", "in an effort to",
-  "in a bid to", "due to the fact that", "owing to the fact that",
+  "in a bid to", "is", "due to the fact that", "owing to the fact that",
   "in light of the fact that", "given the fact that",
   "the fact that", "as a matter of fact", "in point of fact",
   "it is worth noting that", "it is important to note that",
@@ -93,6 +93,311 @@ const FILLER_WORDS = [
   "no problem", "no worries", "sure thing", "of course",
   "absolutely", "certainly", "definitely", "go ahead",
   "feel free",
+];
+
+// ── Structural compression rules ──────────────────────────────────────────
+// Applied BEFORE filler removal, in order.
+// Each rule is { pattern: RegExp, replacement: string|Function, note: string }
+// Patterns use capture groups; replacements can reference them via $1/$2 or
+// a function for more control.
+//
+// Rules are conservative: they compress structure only when meaning survives
+// intact. No synonym swaps, no creative rewrites.
+
+const COMPRESSION_RULES = [
+  // ── Comparative constructions ────────────────────────────────────────────
+
+  // "the more X ..., the more Y ..." → "More X means more Y."
+  // Handles: "the more tokens you use, the more you save"
+  {
+    pattern: /\bthe more ([^,\.]+?),\s*the more ([^,\.]+)/gi,
+    replacement: 'More $1 means more $2',
+    note: 'the-more...the-more compression',
+  },
+  // "the more X ..., the less Y ..."
+  {
+    pattern: /\bthe more ([^,\.]+?),\s*the less ([^,\.]+)/gi,
+    replacement: 'More $1 means less $2',
+    note: 'the-more...the-less compression',
+  },
+  // "the less X ..., the more Y ..."
+  {
+    pattern: /\bthe less ([^,\.]+?),\s*the more ([^,\.]+)/gi,
+    replacement: 'Less $1 means more $2',
+    note: 'the-less...the-more compression',
+  },
+
+  // ── Relative clause simplification ──────────────────────────────────────
+
+  // "that you [verb]" → "[verb]ing"  e.g. "tokens that you use" → "tokens you use"
+  // Conservative: just drop "that" when followed by "you"
+  {
+    pattern: /\bthat you\b/gi,
+    replacement: 'you',
+    note: 'drop redundant "that" before "you"',
+  },
+
+  // "which is [adj/noun]" → "that is [adj/noun]" → just the adjective
+  // e.g. "a method which is effective" → "an effective method" is too risky;
+  // instead just compress "which is" → "that is"? No — keep it to dropping "which is"
+  // only when it immediately precedes an adjective at end of clause.
+  {
+    pattern: /\b(?:which|that) is (\w+)(?=[,\.\s]|$)/gi,
+    replacement: '$1',
+    note: 'drop "which/that is" before terminal adjective',
+  },
+
+  // ── Ability / modal verbosity ────────────────────────────────────────────
+
+  // "is able to" → "can"
+  {
+    pattern: /\bis able to\b/gi,
+    replacement: 'can',
+    note: '"is able to" → "can"',
+  },
+  // "are able to" → "can"
+  {
+    pattern: /\bare able to\b/gi,
+    replacement: 'can',
+    note: '"are able to" → "can"',
+  },
+  // "was able to" → "could"
+  {
+    pattern: /\bwas able to\b/gi,
+    replacement: 'could',
+    note: '"was able to" → "could"',
+  },
+  // "will be able to" → "can"
+  {
+    pattern: /\bwill be able to\b/gi,
+    replacement: 'can',
+    note: '"will be able to" → "can"',
+  },
+
+  // ── Expletive "there is/are" ─────────────────────────────────────────────
+
+  // "There is a X that" → "A X"  e.g. "There is a problem that needs solving" → "A problem needs solving"
+  // Conservative: only when "there is/are a/an/the" + noun + "that/which"
+  {
+    pattern: /\bThere (?:is|are) (a|an|the) (\w+) that\b/gi,
+    replacement: '$1 $2 that',
+    note: 'collapse "there is/are [art] [noun] that" opener',
+  },
+  // "There is/are no" → "No"
+  {
+    pattern: /\bThere (?:is|are) no\b/gi,
+    replacement: 'No',
+    note: '"There is/are no" → "No"',
+  },
+
+  // ── Wordy prepositions & conjunctions ────────────────────────────────────
+
+  // "in the event that" → "if"
+  {
+    pattern: /\bin the event that\b/gi,
+    replacement: 'if',
+    note: '"in the event that" → "if"',
+  },
+  // "in the event of" → "if"
+  {
+    pattern: /\bin the event of\b/gi,
+    replacement: 'if',
+    note: '"in the event of" → "if"',
+  },
+  // "prior to" → "before"
+  {
+    pattern: /\bprior to\b/gi,
+    replacement: 'before',
+    note: '"prior to" → "before"',
+  },
+  // "subsequent to" → "after"
+  {
+    pattern: /\bsubsequent to\b/gi,
+    replacement: 'after',
+    note: '"subsequent to" → "after"',
+  },
+  // "in spite of the fact that" → "although"
+  {
+    pattern: /\bin spite of the fact that\b/gi,
+    replacement: 'although',
+    note: '"in spite of the fact that" → "although"',
+  },
+  // "despite the fact that" → "although"
+  {
+    pattern: /\bdespite the fact that\b/gi,
+    replacement: 'although',
+    note: '"despite the fact that" → "although"',
+  },
+  // "at this point in time" → "now"
+  {
+    pattern: /\bat this point in time\b/gi,
+    replacement: 'now',
+    note: '"at this point in time" → "now"',
+  },
+  // "at the present time" → "now"
+  {
+    pattern: /\bat the present time\b/gi,
+    replacement: 'now',
+    note: '"at the present time" → "now"',
+  },
+  // "on a [adj] basis" → the adjective + "ly"  e.g. "on a daily basis" → "daily"
+  {
+    pattern: /\bon a (\w+) basis\b/gi,
+    replacement: '$1',
+    note: '"on a X basis" → "X"',
+  },
+
+  // ── Wordy verb constructions ─────────────────────────────────────────────
+
+  // "make use of" → "use"
+  {
+    pattern: /\bmake use of\b/gi,
+    replacement: 'use',
+    note: '"make use of" → "use"',
+  },
+  // "make a decision" → "decide"
+  {
+    pattern: /\bmake a decision\b/gi,
+    replacement: 'decide',
+    note: '"make a decision" → "decide"',
+  },
+  // "come to a conclusion" → "conclude"
+  {
+    pattern: /\bcome to a conclusion\b/gi,
+    replacement: 'conclude',
+    note: '"come to a conclusion" → "conclude"',
+  },
+  // "take into consideration" → "consider"
+  {
+    pattern: /\btake into consideration\b/gi,
+    replacement: 'consider',
+    note: '"take into consideration" → "consider"',
+  },
+  // "give consideration to" → "consider"
+  {
+    pattern: /\bgive consideration to\b/gi,
+    replacement: 'consider',
+    note: '"give consideration to" → "consider"',
+  },
+  // "provide an explanation for" → "explain"
+  {
+    pattern: /\bprovide an explanation for\b/gi,
+    replacement: 'explain',
+    note: '"provide an explanation for" → "explain"',
+  },
+  // "conduct an investigation" → "investigate"
+  {
+    pattern: /\bconduct an investigation\b/gi,
+    replacement: 'investigate',
+    note: '"conduct an investigation" → "investigate"',
+  },
+  // "perform an analysis" → "analyze"
+  {
+    pattern: /\bperform an analysis\b/gi,
+    replacement: 'analyze',
+    note: '"perform an analysis" → "analyze"',
+  },
+
+  // ── Tautological pairs ───────────────────────────────────────────────────
+
+  // "each and every" → "every"
+  {
+    pattern: /\beach and every\b/gi,
+    replacement: 'every',
+    note: '"each and every" → "every"',
+  },
+  // "any and all" → "all"
+  {
+    pattern: /\bany and all\b/gi,
+    replacement: 'all',
+    note: '"any and all" → "all"',
+  },
+  // "full and complete" → "complete"
+  {
+    pattern: /\bfull and complete\b/gi,
+    replacement: 'complete',
+    note: '"full and complete" → "complete"',
+  },
+  // "true and accurate" → "accurate"
+  {
+    pattern: /\btrue and accurate\b/gi,
+    replacement: 'accurate',
+    note: '"true and accurate" → "accurate"',
+  },
+  // "null and void" → "void"
+  {
+    pattern: /\bnull and void\b/gi,
+    replacement: 'void',
+    note: '"null and void" → "void"',
+  },
+
+  // ── Vague quantity phrases ───────────────────────────────────────────────
+
+  // "a large number of" → "many"
+  {
+    pattern: /\ba large number of\b/gi,
+    replacement: 'many',
+    note: '"a large number of" → "many"',
+  },
+  // "a number of" → "several"
+  {
+    pattern: /\ba number of\b/gi,
+    replacement: 'several',
+    note: '"a number of" → "several"',
+  },
+  // "a small number of" → "a few"
+  {
+    pattern: /\ba small number of\b/gi,
+    replacement: 'a few',
+    note: '"a small number of" → "a few"',
+  },
+  // "a wide variety of" → "various"
+  {
+    pattern: /\ba wide variety of\b/gi,
+    replacement: 'various',
+    note: '"a wide variety of" → "various"',
+  },
+  // "a wide range of" → "various"
+  {
+    pattern: /\ba wide range of\b/gi,
+    replacement: 'various',
+    note: '"a wide range of" → "various"',
+  },
+
+  // ── Hollow intensifiers with structure ───────────────────────────────────
+
+  // "the fact that" → "that"  (structural filler, not a data point)
+  // Note: filler list already has "the fact that" but the regex needs word-boundary care
+  {
+    pattern: /\bthe fact that\b/gi,
+    replacement: 'that',
+    note: '"the fact that" → "that"',
+  },
+  // "it is X that" → "X:"  e.g. "it is important that you" → "importantly, you"
+  // Conservative: only "it is X that" where X is a single adjective
+  {
+    pattern: /\bIt is (\w+) that\b/gi,
+    replacement: '$1:',
+    note: '"It is X that" → "X:"',
+  },
+  // "the reason why" → "why"
+  {
+    pattern: /\bthe reason why\b/gi,
+    replacement: 'why',
+    note: '"the reason why" → "why"',
+  },
+  // "the reason that" → "why"
+  {
+    pattern: /\bthe reason that\b/gi,
+    replacement: 'why',
+    note: '"the reason that" → "why"',
+  },
+  // "whether or not" → "whether"
+  {
+    pattern: /\bwhether or not\b/gi,
+    replacement: 'whether',
+    note: '"whether or not" → "whether"',
+  },
 ];
 
 // ── Generator guidance ─────────────────────────────────────────────────────

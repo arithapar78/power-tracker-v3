@@ -105,6 +105,30 @@ body {
   color: #666;
 }
 
+/* ── AI backend info (inside energy card) ─────── */
+.ai-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.ai-model-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: #1a1a1a;
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+
+.ai-watts-label {
+  font-size: 11px;
+  color: #888;
+}
+
 /* ── Comparisons ──────────────────────────────── */
 .comparisons {
   display: flex;

@@ -27,45 +27,61 @@ async function refreshDashboard() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  // Ask the service worker for the latest metrics for this tab.
+  // Ask the service worker for the latest metrics + AI info for this tab.
   const response = await chrome.runtime.sendMessage({
     type: 'GET_METRICS',
     tabId: tab.id,
   });
 
   const metrics = response?.metrics;
+  const ai      = response?.ai ?? null;
 
   // If no metrics yet (page hasn't sent any), show a loading state.
   if (!metrics) {
-    setEnergyDisplay(null);
+    setEnergyDisplay(null, null);
     return;
   }
 
-  const watts = estimateWatts(metrics);
-  setEnergyDisplay(watts);
+  // Frontend watts come from the local estimator (same formula the service worker uses)
+  const frontendWatts = estimateWatts(metrics);
+  // Backend AI watts come from the service worker's cached detection result
+  const aiWatts = ai?.aiWatts ?? 0;
+  const totalWatts = frontendWatts + aiWatts;
+
+  setEnergyDisplay(totalWatts, ai);
 }
 
-function setEnergyDisplay(watts) {
-  const energyEl = document.querySelector('.energy-value');
+function setEnergyDisplay(watts, ai) {
+  const energyEl  = document.querySelector('.energy-value');
+  const aiInfoEl  = document.getElementById('ai-info');
+  const aiModelEl = document.getElementById('ai-model-label');
+  const aiWattsEl = document.getElementById('ai-watts-label');
 
   if (watts === null) {
     energyEl.innerHTML = '… <span class="energy-unit">W</span>';
+    aiInfoEl.classList.add('hidden');
     return;
   }
 
   energyEl.innerHTML = `${watts.toFixed(2)} <span class="energy-unit">W</span>`;
 
-  // Update comparison values.
-  // Light bulbs: a standard 60 W bulb; watts here is per-tab estimate scaled to per hour.
+  // Show AI model badge if an AI site was detected
+  if (ai?.modelName) {
+    aiModelEl.textContent = ai.modelName;
+    aiWattsEl.textContent = `+${(ai.aiWatts ?? 0).toFixed(3)} W backend`;
+    aiInfoEl.classList.remove('hidden');
+  } else {
+    aiInfoEl.classList.add('hidden');
+  }
+
+  // Update comparison values using total watts.
   document.querySelector('.bulbs-value').textContent =
     (watts / 60).toFixed(3);
 
-  // Water: ~0.5 L (0.13 gal) to produce 1 kWh; scale to per-hour at current watts.
   // gallons/hr = (watts / 1000) * 0.13
   document.querySelector('.water-value').textContent =
     ((watts / 1000) * 0.13).toFixed(4);
 
-  // CO₂: average US grid emits ~386 g CO₂ per kWh.
   // g/hr = (watts / 1000) * 386
   document.querySelector('.co2-value').textContent =
     ((watts / 1000) * 386).toFixed(3);
