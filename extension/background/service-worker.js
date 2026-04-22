@@ -16,6 +16,9 @@ const tabMetrics = {};
 // tabAI maps tabId -> { detection result, watts, modelKey } (in-memory)
 const tabAI = {};
 
+// tabTotalWatts maps tabId -> last computed totalWatts (frontend + backend AI)
+const tabTotalWatts = {};
+
 // Track when each tab was first seen so we can estimate session duration
 const tabStartTime = {};
 
@@ -41,20 +44,25 @@ async function resolveAIWatts(tabId) {
   // Run detection using URL + page title (no DOM access needed)
   const detection = aiManager.detectAIModel(tab.url, tab.title);
   if (!detection) {
+    console.log('[PowerTracker] No AI site detected for tab', tabId, tab.url);
     return { aiWatts: 0, modelKey: null, modelName: null };
   }
+
+  console.log('[PowerTracker] AI detected:', detection.platform, detection.modelKey);
 
   // Duration since the tab was first seen in this session
   const startTime  = tabStartTime[tabId] || Date.now();
   const durationMs = Date.now() - startTime;
 
   // Compute energy and convert to an instantaneous watt figure
-  const { energyWh } = aiManager.computeEnergy(detection.modelKey, durationMs);
+  const { queries, energyWh } = aiManager.computeEnergy(detection.modelKey, durationMs);
   const aiWatts = aiManager.energyToWatts(energyWh, durationMs);
+
+  console.log('[PowerTracker] queries:', queries, '| energyWh:', energyWh.toFixed(6), '| aiWatts:', aiWatts.toFixed(4));
 
   aiManager.updateTabUsage(tabId, {
     modelKey: detection.modelKey,
-    queries:  aiManager.estimateQueryCount(durationMs),
+    queries,
     energyWh,
   });
 
@@ -85,8 +93,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     resolveAIWatts(tabId).then(({ aiWatts, modelKey, modelName, platform }) => {
       const totalWatts = frontendWatts + aiWatts;
 
-      // Cache AI info for GET_METRICS requests
+      console.log('[PowerTracker] frontendWatts:', frontendWatts.toFixed(4), '| aiWatts:', aiWatts.toFixed(4), '| totalWatts:', totalWatts.toFixed(4));
+
+      // Cache AI info and total for GET_METRICS requests
       tabAI[tabId] = { aiWatts, modelKey, modelName, platform };
+      tabTotalWatts[tabId] = totalWatts;
 
       // Persist total (frontend + backend) to history
       appendWatts(totalWatts);
@@ -97,9 +108,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Popup requests the latest metrics for a given tab.
   if (message.type === 'GET_METRICS') {
-    const metrics = tabMetrics[message.tabId] ?? null;
-    const ai      = tabAI[message.tabId] ?? null;
-    sendResponse({ metrics, ai });
+    const metrics     = tabMetrics[message.tabId] ?? null;
+    const ai          = tabAI[message.tabId] ?? null;
+    const totalWatts  = tabTotalWatts[message.tabId] ?? null;
+    sendResponse({ metrics, ai, totalWatts });
   }
 
   // Options page requests full history.
@@ -120,6 +132,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   delete tabMetrics[tabId];
   delete tabAI[tabId];
+  delete tabTotalWatts[tabId];
   delete tabStartTime[tabId];
   aiManager.removeTab(tabId);
 });

@@ -33,8 +33,9 @@ async function refreshDashboard() {
     tabId: tab.id,
   });
 
-  const metrics = response?.metrics;
-  const ai      = response?.ai ?? null;
+  const metrics    = response?.metrics;
+  const ai         = response?.ai ?? null;
+  const swTotal    = response?.totalWatts ?? null;
 
   // If no metrics yet (page hasn't sent any), show a loading state.
   if (!metrics) {
@@ -42,11 +43,19 @@ async function refreshDashboard() {
     return;
   }
 
-  // Frontend watts come from the local estimator (same formula the service worker uses)
-  const frontendWatts = estimateWatts(metrics);
-  // Backend AI watts come from the service worker's cached detection result
-  const aiWatts = ai?.aiWatts ?? 0;
-  const totalWatts = frontendWatts + aiWatts;
+  // Prefer the service worker's pre-computed total (frontendWatts + aiWatts).
+  // Fall back to local estimation only if the SW hasn't cached a total yet
+  // (e.g. the very first tick before resolveAIWatts has resolved).
+  let totalWatts;
+  if (swTotal !== null) {
+    totalWatts = swTotal;
+  } else {
+    const frontendWatts = estimateWatts(metrics);
+    const aiWatts = ai?.aiWatts ?? 0;
+    totalWatts = frontendWatts + aiWatts;
+  }
+
+  console.log('[PowerTracker popup] totalWatts:', totalWatts.toFixed(4), '| aiWatts:', (ai?.aiWatts ?? 0).toFixed(4));
 
   setEnergyDisplay(totalWatts, ai);
 }
