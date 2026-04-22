@@ -28,6 +28,7 @@ const FILLER_WORDS = [
 
   // Filler intensifiers
   "just", "simply", "basically", "essentially", "fundamentally",
+  "actually", "literally", "honestly", "truly", "genuinely",
   "really", "very", "quite", "pretty", "fairly", "rather",
   "somewhat", "slightly", "a little", "a bit", "kind of",
   "sort of", "in a way", "in some ways", "to some extent",
@@ -397,6 +398,109 @@ const COMPRESSION_RULES = [
     pattern: /\bwhether or not\b/gi,
     replacement: 'whether',
     note: '"whether or not" → "whether"',
+  },
+
+  // ── "can actually" / modal + actually ───────────────────────────────────
+
+  // "can actually [verb]" → "can [verb]"
+  {
+    pattern: /\bcan actually\b/gi,
+    replacement: 'can',
+    note: '"can actually" → "can"',
+  },
+  // "could actually" → "could"
+  {
+    pattern: /\bcould actually\b/gi,
+    replacement: 'could',
+    note: '"could actually" → "could"',
+  },
+  // "will actually" → "will"
+  {
+    pattern: /\bwill actually\b/gi,
+    replacement: 'will',
+    note: '"will actually" → "will"',
+  },
+  // "do actually" → "do"
+  {
+    pattern: /\bdo actually\b/gi,
+    replacement: 'do',
+    note: '"do actually" → "do"',
+  },
+
+  // ── Unnecessary "the" before comparative adjectives ──────────────────────
+
+  // "the higher/lower/greater/... X" — drop the article before a comparative adjective
+  // Uses a function replacement to preserve capitalisation of the adjective.
+  {
+    pattern: /\bthe (higher|lower|greater|fewer|larger|smaller|longer|shorter|faster|slower)\b/gi,
+    replacement: '$1',
+    note: 'drop "the" before comparative adjective',
+  },
+
+  // ── Redundant relative openers ────────────────────────────────────────────
+
+  // "X, which means that Y" → "X, meaning Y"
+  {
+    pattern: /,\s*which means that\b/gi,
+    replacement: ', meaning',
+    note: '", which means that" → ", meaning"',
+  },
+  // "X, which means Y" → "X, meaning Y"
+  {
+    pattern: /,\s*which means\b/gi,
+    replacement: ', meaning',
+    note: '", which means" → ", meaning"',
+  },
+
+  // ── Hollow purpose / result phrases ─────────────────────────────────────
+
+  // "in order for X to" → "for X to"
+  {
+    pattern: /\bin order for\b/gi,
+    replacement: 'for',
+    note: '"in order for" → "for"',
+  },
+  // "so as to [verb]" → "to [verb]"
+  {
+    pattern: /\bso as to\b/gi,
+    replacement: 'to',
+    note: '"so as to" → "to"',
+  },
+  // "the process of [verb]ing" → "[verb]ing"
+  {
+    pattern: /\bthe process of (\w+ing)\b/gi,
+    replacement: '$1',
+    note: '"the process of Xing" → "Xing"',
+  },
+  // "the act of [verb]ing" → "[verb]ing"
+  {
+    pattern: /\bthe act of (\w+ing)\b/gi,
+    replacement: '$1',
+    note: '"the act of Xing" → "Xing"',
+  },
+
+  // ── Helper-verb redundancy ────────────────────────────────────────────────
+
+  // "you are able to" → "you can"
+  {
+    pattern: /\byou are able to\b/gi,
+    replacement: 'you can',
+    note: '"you are able to" → "you can"',
+  },
+  // "you will be able to" → "you can"
+  {
+    pattern: /\byou will be able to\b/gi,
+    replacement: 'you can',
+    note: '"you will be able to" → "you can"',
+  },
+
+  // ── Filler connectors with structure ─────────────────────────────────────
+
+  // "X as well as Y" → "X and Y"  (only when X is a single word to avoid over-capture)
+  {
+    pattern: /\b(\w+) as well as\b/gi,
+    replacement: '$1 and',
+    note: '"X as well as" → "X and" (single-word X only)',
   },
 ];
 
