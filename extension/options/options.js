@@ -52,13 +52,39 @@ function setStats(history) {
   peakEl.textContent    = peak.toFixed(2);
 }
 
+// ── Site colours ────────────────────────────────────────────────────────────
+
+const SITE_COLORS = {
+  openai:     '#10a37f',
+  anthropic:  '#d4651f',
+  google:     '#4285f4',
+  stability:  '#7c3aed',
+  mistral:    '#f59e0b',
+  cohere:     '#ec4899',
+  huggingface:'#f97316',
+  together:   '#06b6d4',
+  replicate:  '#6366f1',
+};
+
+function siteColor(site) {
+  return SITE_COLORS[site] ?? '#888';
+}
+
 // ── Chart ───────────────────────────────────────────────────────────────────
 
 function drawChart(history) {
   const canvas = document.getElementById('chart');
   const ctx    = canvas.getContext('2d');
-  const W      = canvas.width;
-  const H      = canvas.height;
+
+  // Sync canvas buffer to actual rendered CSS size (handles devicePixelRatio).
+  const dpr  = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = Math.round(rect.width  * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  ctx.scale(dpr, dpr);
+  const W = rect.width;
+  const H = rect.height;
+
   const pl = PADDING.left, pr = PADDING.right;
   const pt = PADDING.top,  pb = PADDING.bottom;
   const chartW = W - pl - pr;
@@ -67,76 +93,73 @@ function drawChart(history) {
   ctx.clearRect(0, 0, W, H);
 
   // Y range: 0 to peak + 20% headroom.
-  const peak   = Math.max(...history.map((e) => e.watts));
-  const yMax   = peak > 0 ? peak * 1.2 : 1;
+  const peak = Math.max(...history.map((e) => e.watts));
+  const yMax = peak > 0 ? peak * 1.2 : 1;
 
-  // X range: first to last timestamp.
-  const tMin   = history[0].ts;
-  const tMax   = history[history.length - 1].ts;
-  const tRange = tMax - tMin || 1; // avoid divide-by-zero for single point
-
-  // Helper: data coords → canvas pixel coords.
-  function px(ts, watts) {
-    const x = pl + ((ts - tMin) / tRange) * chartW;
-    const y = pt + chartH - (watts / yMax) * chartH;
-    return [x, y];
-  }
-
-  // ── Grid lines ────────────────────────────────────────────────────────────
-  ctx.strokeStyle = '#e8e8e8';
-  ctx.lineWidth   = 1;
-  ctx.fillStyle   = '#999';
-  ctx.font        = '10px -apple-system, sans-serif';
-  ctx.textAlign   = 'right';
+  // ── Horizontal grid lines + Y labels ─────────────────────────────────────
+  ctx.font      = '10px -apple-system, sans-serif';
+  ctx.textAlign = 'right';
 
   for (let i = 0; i <= 4; i++) {
     const wVal = (yMax * i) / 4;
     const yPx  = pt + chartH - (i / 4) * chartH;
 
+    ctx.strokeStyle = '#e8e8e8';
+    ctx.lineWidth   = 1;
     ctx.beginPath();
     ctx.moveTo(pl, yPx);
     ctx.lineTo(W - pr, yPx);
     ctx.stroke();
 
+    ctx.fillStyle = '#999';
     ctx.fillText(wVal.toFixed(1), pl - 4, yPx + 3);
   }
 
-  // ── X axis labels ─────────────────────────────────────────────────────────
-  ctx.textAlign = 'center';
-  const labelCount = Math.min(history.length, 5);
-  for (let i = 0; i < labelCount; i++) {
-    const idx  = Math.round((i / (labelCount - 1 || 1)) * (history.length - 1));
-    const entry = history[idx];
-    const [xPx] = px(entry.ts, 0);
-    const label = new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    ctx.fillStyle = '#999';
-    ctx.fillText(label, xPx, H - 6);
-  }
-
-  // ── Line ──────────────────────────────────────────────────────────────────
-  ctx.beginPath();
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.lineWidth   = 2;
-  ctx.lineJoin    = 'round';
+  // ── Bars ──────────────────────────────────────────────────────────────────
+  // Each entry gets an equal-width slot. Gap is 20% of slot width.
+  const n       = history.length;
+  const slotW   = chartW / n;
+  const barW    = Math.max(1, slotW * 0.8);
+  const gapW    = slotW - barW;
 
   history.forEach((entry, i) => {
-    const [x, y] = px(entry.ts, entry.watts);
-    if (i === 0) ctx.moveTo(x, y);
-    else         ctx.lineTo(x, y);
+    const barH  = (entry.watts / yMax) * chartH;
+    const x     = pl + i * slotW + gapW / 2;
+    const y     = pt + chartH - barH;
+
+    ctx.fillStyle = siteColor(entry.site);
+    ctx.fillRect(x, y, barW, barH);
   });
 
-  ctx.stroke();
+  // ── X axis time labels ────────────────────────────────────────────────────
+  // Show up to 5 evenly-spaced labels, centred on their bar.
+  ctx.fillStyle = '#999';
+  ctx.textAlign = 'center';
+  const labelCount = Math.min(n, 5);
+  for (let i = 0; i < labelCount; i++) {
+    const idx   = Math.round((i / (labelCount - 1 || 1)) * (n - 1));
+    const entry = history[idx];
+    const xMid  = pl + idx * slotW + slotW / 2;
+    const label = new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    ctx.fillText(label, xMid, H - 6);
+  }
 
-  // ── Dots at each data point ───────────────────────────────────────────────
-  // Only draw dots when there are few enough points to be readable.
-  if (history.length <= 60) {
-    ctx.fillStyle = '#1a1a1a';
-    history.forEach((entry) => {
-      const [x, y] = px(entry.ts, entry.watts);
+  // ── Legend ────────────────────────────────────────────────────────────────
+  // Show one dot + name for each distinct site present.
+  const sites = [...new Set(history.map((e) => e.site).filter(Boolean))];
+  if (sites.length > 0) {
+    ctx.textAlign = 'left';
+    ctx.font      = '9px -apple-system, sans-serif';
+    let lx = pl;
+    for (const site of sites) {
+      ctx.fillStyle = siteColor(site);
       ctx.beginPath();
-      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.arc(lx + 4, pt - 4, 4, 0, Math.PI * 2);
       ctx.fill();
-    });
+      ctx.fillStyle = '#666';
+      ctx.fillText(site, lx + 12, pt - 1);
+      lx += ctx.measureText(site).width + 24;
+    }
   }
 }
 

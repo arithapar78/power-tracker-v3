@@ -99,8 +99,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       tabAI[tabId] = { aiWatts, modelKey, modelName, platform };
       tabTotalWatts[tabId] = totalWatts;
 
-      // Persist total (frontend + backend) to history
-      appendWatts(totalWatts);
+      // Persist total (frontend + backend) to history, tagged with platform
+      appendWatts(totalWatts, platform ?? null);
     });
 
     sendResponse({ ok: true });

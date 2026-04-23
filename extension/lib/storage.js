@@ -17,13 +17,14 @@ const MAX_ENTRIES = 120;
 /**
  * Append a watt reading to history, trimming oldest entries if over the cap.
  * @param {number} watts
+ * @param {string} [site] - platform name (e.g. 'openai', 'anthropic') or null
  * @returns {Promise<void>}
  */
-async function appendWatts(watts) {
+async function appendWatts(watts, site = null) {
   const data = await chrome.storage.local.get(STORAGE_KEY);
   const history = data[STORAGE_KEY] ?? [];
 
-  history.push({ ts: Date.now(), watts });
+  history.push({ ts: Date.now(), watts, site });
 
   // Trim from the front to stay within the cap.
   if (history.length > MAX_ENTRIES) {

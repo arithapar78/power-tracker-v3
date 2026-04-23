@@ -204,7 +204,9 @@ class AIEnergyManager {
    * @returns {number}
    */
   estimateQueryCount(durationMs) {
-    const queries = Math.floor(durationMs / (3 * 60 * 1000));
+    // Minimum 1 query: once an AI site is detected the user has already
+    // made at least one request. After that, one more query per 3 minutes.
+    const queries = 1 + Math.floor(durationMs / (3 * 60 * 1000));
     return Math.min(queries, 20);
   }
 
