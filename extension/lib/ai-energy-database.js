@@ -226,17 +226,19 @@ class AIEnergyManager {
   }
 
   /**
-   * Convert Wh over a duration to an average watt value.
-   * This lets backend AI energy be added directly to frontend watts.
+   * Convert per-query energy to an average watt value.
+   * Uses a fixed 30-second query window rather than raw session duration,
+   * so the number stays stable and doesn't spike on tab open or decay to
+   * near-zero after a long session.
    *
-   * @param {number} energyWh
-   * @param {number} durationMs
+   * @param {number} energyWh  - energy for the most recent query (Wh)
+   * @param {number} _durationMs - unused, kept for signature compatibility
    * @returns {number} watts
    */
-  energyToWatts(energyWh, durationMs) {
-    if (durationMs <= 0) return 0;
-    const durationHrs = durationMs / 3_600_000;
-    return Math.max(0, energyWh / durationHrs);
+  energyToWatts(energyWh, _durationMs) {
+    // Amortize one query's energy over 30 seconds (a typical inference window).
+    const QUERY_WINDOW_HRS = 30 / 3600;
+    return Math.max(0, energyWh / QUERY_WINDOW_HRS);
   }
 
   /**

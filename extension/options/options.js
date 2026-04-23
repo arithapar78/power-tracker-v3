@@ -101,7 +101,7 @@ function drawChart(history) {
   ctx.textAlign = 'right';
 
   for (let i = 0; i <= 4; i++) {
-    const wVal = (yMax * i) / 4;
+    const wVal = (peak * i) / 4;
     const yPx  = pt + chartH - (i / 4) * chartH;
 
     ctx.strokeStyle = '#e8e8e8';

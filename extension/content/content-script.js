@@ -127,10 +127,14 @@
   }
 
   function sendMetrics() {
+    // Guard against the extension being reloaded/updated while this content
+    // script is still alive — chrome.runtime.sendMessage throws synchronously
+    // with "Extension context invalidated" in that case.
+    if (!chrome.runtime?.id) return;
     const metrics = collectMetrics();
-    // Fire-and-forget. The callback is omitted intentionally — we don't need
-    // a response, and omitting it avoids "message channel closed" console errors.
-    chrome.runtime.sendMessage({ type: 'PAGE_METRICS', metrics }).catch(() => {});
+    try {
+      chrome.runtime.sendMessage({ type: 'PAGE_METRICS', metrics }).catch(() => {});
+    } catch (_) {}
   }
 
   // Send once on load (after a short delay so the page has started rendering),

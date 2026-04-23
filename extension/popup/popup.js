@@ -85,7 +85,7 @@ function setEnergyDisplay(watts, ai) {
 
   // Update comparison values using total watts.
   document.querySelector('.bulbs-value').textContent =
-    (watts / 60).toFixed(3);
+    (watts / 6).toFixed(3);
 
   // gallons/hr = (watts / 1000) * 0.13
   document.querySelector('.water-value').textContent =

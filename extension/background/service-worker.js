@@ -54,9 +54,11 @@ async function resolveAIWatts(tabId) {
   const startTime  = tabStartTime[tabId] || Date.now();
   const durationMs = Date.now() - startTime;
 
-  // Compute energy and convert to an instantaneous watt figure
+  // Compute energy; convert a single query's cost to watts (not the session total,
+  // which would spike on first tick and decay to near-zero after a long session).
   const { queries, energyWh } = aiManager.computeEnergy(detection.modelKey, durationMs);
-  const aiWatts = aiManager.energyToWatts(energyWh, durationMs);
+  const perQueryWh = energyWh / Math.max(1, queries);
+  const aiWatts = aiManager.energyToWatts(perQueryWh, durationMs);
 
   console.log('[PowerTracker] queries:', queries, '| energyWh:', energyWh.toFixed(6), '| aiWatts:', aiWatts.toFixed(4));
 
