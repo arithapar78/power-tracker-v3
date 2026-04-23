@@ -21,6 +21,7 @@ const MAX_ENTRIES = 120;
  * @returns {Promise<void>}
  */
 async function appendWatts(watts, site = null) {
+  if (watts > MAX_SANE_WATTS) return;
   const data = await chrome.storage.local.get(STORAGE_KEY);
   const history = data[STORAGE_KEY] ?? [];
 
@@ -34,13 +35,19 @@ async function appendWatts(watts, site = null) {
   await chrome.storage.local.set({ [STORAGE_KEY]: history });
 }
 
+// Readings above this are physically impossible for a browser tab and indicate
+// a bug in the old energyToWatts calculation (session-duration spike).
+const MAX_SANE_WATTS = 100;
+
 /**
- * Read the full watt history array.
+ * Read the full watt history array, filtering out any corrupted spike entries
+ * left over from a previous buggy energyToWatts calculation.
  * @returns {Promise<Array<{ ts: number, watts: number }>>}
  */
 async function readHistory() {
   const data = await chrome.storage.local.get(STORAGE_KEY);
-  return data[STORAGE_KEY] ?? [];
+  const history = data[STORAGE_KEY] ?? [];
+  return history.filter(e => e.watts <= MAX_SANE_WATTS);
 }
 
 /**
